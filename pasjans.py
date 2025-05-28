@@ -115,6 +115,7 @@ def plus1_value(hi_card,lo_card):
 class Game: 
 
     # Inicjalizacja programu
+    
     def __init__(self):
 
         # Czy program działa?
@@ -164,7 +165,7 @@ class Game:
 
             self.choices = [
                 Choice("Nowa Gra", Screen.DIFF_SELECT, "Rozpocznij nową grę."),
-                Choice("Paszoł Won", Screen.EXIT, "Wyjdź z programu.")
+                Choice("Wyjdź z gry", Screen.EXIT, "Wyjdź z programu.")
             ]
 
         elif self.cur_screen == Screen.PAUSE:
@@ -370,7 +371,7 @@ class Game:
 
                 # Wejście
                 inp = getch()
-                
+
                 # Pauza
                 if inp == ESC:
                     self.switch_screen(Screen.PAUSE)
@@ -496,6 +497,7 @@ class Game:
                                             card = self.state["deck"].pop(self.state["deck_shift"]+self.state["pickupp"][0])
                                             self.state["discard"][self.state["mp"][0]-3].append(card)
                                             if self.state["deck_shift"] > 0: self.state["deck_shift"] -= 1
+                                            elif self.cards_on_deck() > 0: self.state["cards_on_deck"] -= 1
 
                         # Reset zaznaczania karty
                         self.state["picking"] = False                                
@@ -538,11 +540,12 @@ class Game:
                             self.state["pickupp"][0] = self.state["mp"][0]
                             self.state["pickupp"][1] = self.state["mp"][1]
 
-                # Jeśli poziom trudności jest Trudny, gracz może wybrać tylko kartę z wierzchu
-
-                if self.state["hard"]:
-                    if not self.get_deck_id(self.state["mp"][0],self.state["mp"][1]):
-                        self.state["mp"][0] = self.cards_on_deck()-1
+                if not self.get_deck_id(self.state["mp"][0],self.state["mp"][1]):
+                    if self.cards_on_deck() > 0:
+                        if self.state["hard"]:
+                            self.state["mp"][0] = self.cards_on_deck()-1 # Jeśli poziom trudności jest Trudny, gracz może wybrać tylko kartę z wierzchu
+                    else:
+                        self.state["mp"][1] += 1
 
             else:
 
