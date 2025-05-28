@@ -395,16 +395,22 @@ class Game:
                 # Dobór karty ze stosu rezerwowego
                 elif inp in BACKSPACE: 
 
+                    self.state["picking"] = False                                
+                    self.state["pickupp"][0] = -1
+                    self.state["pickupp"][1] = -1
+
                     hard = self.state["hard"]                    
                     
+                    # Czy wszystkie karty w talii zostały przejrzane?
                     if self.state["deck_shift"]+self.cards_on_deck() >= len(self.state["deck"]):
                         self.state["deck_shift"] = 0
                         self.state["cards_on_deck"] = 0
                         if not self.get_deck_id(self.state["mp"][0],self.state["mp"][1]): self.state["mp"][1] += 1
                         self.state["deck"] = shuffle(self.state["deck"])
                     else:
-                        if self.state["cards_on_deck"] < 3: self.state["cards_on_deck"] += 1+2*hard
-                        else: self.state["deck_shift"] += 1+2*hard
+                        self.state["cards_on_deck"] += 1+2*hard
+                        if self.state["cards_on_deck"] > 3: self.state["cards_on_deck"] = 3
+                        if self.state["cards_on_deck"] == 3: self.state["deck_shift"] += 1+2*hard
 
                         if self.state["deck_shift"] + self.cards_on_deck() >= len(self.state["deck"]): self.state["deck_shift"] = len(self.state["deck"])-self.cards_on_deck()
                 
