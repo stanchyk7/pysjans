@@ -11,11 +11,12 @@ from copy import deepcopy
 class Screen(Enum):
     MENU = 0 # Menu główne
     DIFF_SELECT = 11 # Wybór poziomu trudności
-    EASY = 12 # Pomocnicza. Pozmiom łatwy
+    EASY = 12 # Pomocnicza. Poziom łatwy
     HARD = 13 # Pomocnicza. Poziom trudny.
     GAME = 1 # Właściwa gra
     PAUSE = 2 # Ekran pauzy
     WIN = 3 # Ekran zwycięstwa
+    SCORES = 31 # Tablica wyników
     EXIT = 4 # Pomocnicza. Wyjście z gry
 
 # Wybór w menu dialogowym (MENU, PAUSE, DIFF_SELECT)
@@ -73,7 +74,7 @@ class Card:
 
 # ZMIENNE STAŁE
 
-# W zależności od platformy kody klawiszowe mogą być różne - z tego powodu są zawarte w krotkach
+# W zależności od platformy kody klawiszowe mogą być różne — z tego powodu są zawarte w krotkach
 
 U = (85, 117)
 BACKSPACE  = (8, KEY_BACKSPACE)
@@ -109,6 +110,26 @@ def check_color(card1,card2,same=True):
 
 def plus1_value(hi_card,lo_card):
     return hi_card.value == lo_card.value+1
+
+def partition(array, low, high):
+
+    pivot = array[high]
+
+    i = low - 1
+    for j in range(low, high):
+        if array[j] <= pivot:
+            i = i + 1
+            (array[i], array[j]) = (array[j], array[i])
+
+    (array[i + 1], array[high]) = (array[high], array[i + 1])
+    return i + 1
+
+
+def quicksort(array, low, high):
+    if low < high:
+        pi = partition(array, low, high)
+        quickSort(array, low, pi - 1)
+        quickSort(array, pi + 1, high)
 
 # OBIEKT GRY
 
@@ -154,6 +175,10 @@ class Game:
 
         self.last_moves = []
 
+        self.scores = open("./wyniki.txt","a+")
+        self.str_scores = self.scores.readlines()
+        print(self.str_scores)
+
     # Konfiguracja poszczególnych ekranów (wyjaśnienia na linijce 10)
     
     def switch_screen(self, screen_in):
@@ -165,6 +190,7 @@ class Game:
 
             self.choices = [
                 Choice("Nowa Gra", Screen.DIFF_SELECT, "Rozpocznij nową grę."),
+                Choice("Tablica wyników", Screen.SCORES, "Wyświetl tablicę wyników."),
                 Choice("Wyjdź z gry", Screen.EXIT, "Wyjdź z programu.")
             ]
 
@@ -201,6 +227,23 @@ class Game:
             addstr("WYGRYWASZ!\nPoziom trudności: "+("Trudny" if self.state["hard"] else "Łatwy")+"\nLiczba ruchów: "+str(self.state["move"])+"\nNaciśnij dowolny klawisz, aby przejść dalej.")
             getch()
             self.switch_screen(Screen.MENU)
+
+        elif self.cur_screen == Screen.SCORES:
+
+            clear()
+
+            if len(self.str_scores) > 1:
+                scores_split = []
+                for s in self.str_scores:
+                    scores_split.append(int(s))
+                scores_split = reversed(quicksort(scores_split,0,len(scores_split)-1))
+                for s in range(min(15, len(scores_split))):
+                    addstr(str(scores_split[s]) + "\n")
+            else:
+                addstr("Nie ma zapisanych wyników!")
+            
+            addstr("\nNaciśnij dowolny klawisz, aby przejść dalej.")
+            getch()
 
         elif self.cur_screen == Screen.EXIT:
 
@@ -295,6 +338,7 @@ class Game:
                 
         return Card(0,0,False)
 
+    # Otrzymaj ID danej części planszy
     def get_deck_id(self,x,y):
         if y > 0: return 2
         elif x > 2: return 1
@@ -307,7 +351,6 @@ class Game:
         noecho()
         curs_set(False)
         keypad(stdscr,True)
-        LINES, COLS = getmaxyx(stdscr)
 
         if not has_colors(): # Czy dany terminal wspiera kolor?
             endwin()
@@ -326,7 +369,6 @@ class Game:
         # Ekran początkowy
 
         addstr("PASJANS\nANTONI KOWALSKI\nGIGATHON, III EDYCJA\nZAŻÓŁĆ GĘŚLĄ JAŹŃ\nNaciśnij dowolny klawisz, aby przejść dalej.")
-        inp = getch()
 
         self.switch_screen(Screen.MENU)
 
@@ -408,9 +450,9 @@ class Game:
                         if not self.get_deck_id(self.state["mp"][0],self.state["mp"][1]): self.state["mp"][1] += 1
                         self.state["deck"] = shuffle(self.state["deck"])
                     else:
+                        if self.state["cards_on_deck"] == 3: self.state["deck_shift"] += 1+2*hard
                         self.state["cards_on_deck"] += 1+2*hard
                         if self.state["cards_on_deck"] > 3: self.state["cards_on_deck"] = 3
-                        if self.state["cards_on_deck"] == 3: self.state["deck_shift"] += 1+2*hard
 
                         if self.state["deck_shift"] + self.cards_on_deck() >= len(self.state["deck"]): self.state["deck_shift"] = len(self.state["deck"])-self.cards_on_deck()
                 
@@ -510,7 +552,7 @@ class Game:
                         self.state["pickupp"][0] = -1
                         self.state["pickupp"][1] = -1
 
-                        # Zapisywanie ostatniego ruchu - przeniesienie karty liczy się jako ruch
+                        # Zapisywanie ostatniego ruchu — przeniesienie karty liczy się jako ruch
                         if moved:
 
                             self.last_moves.append(last_state)
@@ -533,6 +575,8 @@ class Game:
 
                         if win:
                             self.state["move"] -= 1
+                            scores_str = self.scores.read()
+                            self.scores.write(("\n" + str(self.state["move"])) if len(scores_str) > 0 else str(self.state["move"]))
                             self.switch_screen(Screen.WIN)
                         
                     else:
@@ -572,6 +616,7 @@ class Game:
                 elif inp in ENTER:
                     self.switch_screen(self.choices[self.choice].cur_screen)
 
+        self.scores.close()
         endwin()
 
 if __name__ == "__main__":
